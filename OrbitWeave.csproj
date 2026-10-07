@@ -8,6 +8,8 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <!-- Version de développement ; la publication (tag vX.Y.Z) la remplace par celle du tag. -->
     <Version>1.0.0</Version>
+    <!-- Icône de l'exe : raccourcis du menu Démarrer et du bureau, liste des programmes. -->
+    <ApplicationIcon>Assets\OrbitWeave.ico</ApplicationIcon>
     <DefaultItemExcludes>$(DefaultItemExcludes);OrbitWeave.Tests/**</DefaultItemExcludes>
   </PropertyGroup>
   <ItemGroup>

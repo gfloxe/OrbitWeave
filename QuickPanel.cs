@@ -193,6 +193,13 @@ public sealed partial class QuickPanel : Window
         quickHint.TextWrapping = TextWrapping.Wrap;
         quickHint.TextTrimming = TextTrimming.None;
         _more.Children.Add(quickHint);
+        _more.Children.Add(Choice("Lancer au démarrage de Windows", ["Activé", "Désactivé"],
+            _ => Settings.StartupRegistration.IsEnabled ? "Activé" : "Désactivé",
+            option =>
+            {
+                try { Settings.StartupRegistration.Set(option == "Activé"); }
+                catch (Exception ex) { CrashLog.Write("QuickPanel.Startup", ex); }
+            }));
         _more.Children.Add(Text("Raccourci", 12, FontWeights.SemiBold, new Thickness(0, 14, 0, 0), secondary: true));
         _hotkey.Template = TileTemplate();
         _hotkey.Background = new SolidColorBrush(Color.FromArgb(0x18, 0xFF, 0xFF, 0xFF));
@@ -275,7 +282,11 @@ public sealed partial class QuickPanel : Window
     }
 
     // Deux choix côte à côte ; celui en vigueur est entouré de rose.
-    private FrameworkElement Choice(string title, string[] options, Func<HotkeySettings, string> get, Action<HotkeySettings, string> set)
+    private FrameworkElement Choice(string title, string[] options, Func<HotkeySettings, string> get, Action<HotkeySettings, string> set) =>
+        Choice(title, options, get, option => _change(settings => set(settings, option)));
+
+    // apply : ce que fait le choix quand il n'est pas un réglage enregistré (ex. démarrage de Windows).
+    private FrameworkElement Choice(string title, string[] options, Func<HotkeySettings, string> get, Action<string> apply)
     {
         var row = new StackPanel { Margin = new Thickness(0, 8, 0, 0) };
         row.Children.Add(Text(title, 12, FontWeights.Normal));
@@ -288,7 +299,7 @@ public sealed partial class QuickPanel : Window
                 Content = Centered(option), Padding = new Thickness(8, 6, 8, 6), Margin = new Thickness(2), Cursor = System.Windows.Input.Cursors.Hand,
                 Background = new SolidColorBrush(Color.FromArgb(0x18, 0xFF, 0xFF, 0xFF)), HorizontalAlignment = HorizontalAlignment.Stretch, Template = TileTemplate()
             };
-            button.Click += (_, _) => { _change(settings => set(settings, option)); Refresh(); };
+            button.Click += (_, _) => { apply(option); Refresh(); };
             buttons.Add((option, button));
             grid.Children.Add(button);
         }

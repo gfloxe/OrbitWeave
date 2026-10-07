@@ -28,6 +28,7 @@ Compression=lzma2/max
 SolidCompression=yes
 WizardStyle=modern
 UninstallDisplayIcon={app}\OrbitWeave.exe
+SetupIconFile=..\Assets\OrbitWeave.ico
 UninstallDisplayName=OrbitWeave
 ; La roue est fermée par l'appli elle-même (ou par l'utilisateur) : voir InitializeSetup.
 CloseApplications=no
@@ -36,7 +37,8 @@ CloseApplications=no
 Name: "french"; MessagesFile: "compiler:Languages\French.isl"
 
 [Tasks]
-Name: "startup"; Description: "Lancer OrbitWeave au démarrage de Windows"
+; Première installation seulement : ensuite, c'est le réglage « Lancer au démarrage de Windows » de l'appli qui décide.
+Name: "startup"; Description: "Lancer OrbitWeave au démarrage de Windows"; Check: not IsUpgrade
 Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; Flags: unchecked
 
 [InstallDelete]
@@ -53,7 +55,9 @@ Name: "{autodesktop}\OrbitWeave"; Filename: "{app}\OrbitWeave.exe"; Tasks: deskt
 
 [Registry]
 Root: HKCU; Subkey: "Software\Microsoft\Windows\CurrentVersion\Run"; ValueType: string; ValueName: "OrbitWeave"; \
-  ValueData: """{app}\OrbitWeave.exe"""; Flags: uninsdeletevalue; Tasks: startup
+  ValueData: """{app}\OrbitWeave.exe"""; Tasks: startup
+; Activé par l'installateur ou depuis l'appli : la désinstallation retire la valeur dans les deux cas.
+Root: HKCU; Subkey: "Software\Microsoft\Windows\CurrentVersion\Run"; ValueType: none; ValueName: "OrbitWeave"; Flags: uninsdeletevalue
 
 [Run]
 ; Aussi en mode silencieux (mise à jour depuis l'appli) : la roue revient toute seule.
@@ -62,6 +66,16 @@ Filename: "{app}\OrbitWeave.exe"; Description: "Lancer OrbitWeave"; Flags: nowai
 [Code]
 const
   WheelMutex = 'Local\OrbitWeave.DesktopWidget';
+  UninstallKey = 'Software\Microsoft\Windows\CurrentVersion\Uninstall\{8342D9AD-79F9-4C00-B21B-FB0581E303B4}_is1';
+
+var
+  Upgrading: Boolean;
+
+// Déjà installé (mise à jour) : lu au tout début, avant que l'installation écrive sa propre clé.
+function IsUpgrade(): Boolean;
+begin
+  Result := Upgrading;
+end;
 
 // La roue qui vient de lancer la mise à jour se ferme : on lui laisse jusqu'à 15 secondes.
 function WheelClosed(): Boolean;
@@ -82,6 +96,7 @@ end;
 
 function InitializeSetup(): Boolean;
 begin
+  Upgrading := RegValueExists(HKCU, UninstallKey, 'UninstallString');
   Result := WheelClosed();
   if not Result then
     SuppressibleMsgBox('OrbitWeave est ouvert. Quitte-le (clic droit sur le rond du milieu, « Quitter OrbitWeave »), puis relance l''installation.',
