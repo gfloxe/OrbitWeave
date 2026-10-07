@@ -1,0 +1,46 @@
+# Publication d'une version : pousser un tag vX.Y.Z (Tools/Publier.ps1 le fait).
+# Tests, appli autonome (sans .NET à installer), installateur, puis Release GitHub avec l'installateur joint.
+# L'appli installée compare sa version à cette Release pour proposer « Mettre à jour ».
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Tests
+        run: dotnet test OrbitWeave.Tests -c Release
+
+      - name: Appli autonome
+        shell: pwsh
+        run: |
+          $version = '${{ github.ref_name }}'.TrimStart('v')
+          dotnet publish OrbitWeave.csproj -c Release -r win-x64 --self-contained true -p:Version=$version -o publish
+          "VERSION=$version" >> $env:GITHUB_ENV
+
+      - name: Installateur
+        shell: pwsh
+        run: |
+          $iscc = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
+          if (-not (Test-Path $iscc)) { choco install innosetup -y --no-progress }
+          & $iscc "/DAppVersion=$env:VERSION" installer\OrbitWeave.iss
+
+      - name: Release
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create '${{ github.ref_name }}' "artifacts/OrbitWeave-$env:VERSION-Setup.exe" `
+            --title "OrbitWeave $env:VERSION" --notes-from-tag
